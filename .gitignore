@@ -1,0 +1,24 @@
+# Visual Studio Geçici ve Önbellek Dosyalarý
+.vs/
+Generated Files/
+x64/
+x86/
+ARM/
+ARM64/
+Debug/
+Release/
+
+# Derleme Sonucu Oluþan Ara Dosyalar (Dosya uzantýlarý)
+*.obj
+*.ilk
+*.pdb
+*.tlog
+*.lastbuildstate
+*.idb
+*.iobj
+*.ipdb
+*.log
+*.recipe
+
+# ÝSTÝSNA: EXE dosyasýnýn yüklenmesine izin ver
+!*.exe

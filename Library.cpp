@@ -2,9 +2,7 @@
 #include "./DFAEngine.h"
 #include <iostream>
 
-// ============================================================================
-// 1. LOGIN AUTOMATON
-// ============================================================================
+
 struct LibraryDFALoginContext {
     int id;
     char pass[50];

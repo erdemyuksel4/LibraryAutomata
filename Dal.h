@@ -46,12 +46,10 @@ struct BookDal {
     }
     Book* findByTitle(const char* search) {
         Book* book = books.FindFirst([search](Book* x) {
-            return x->title == search;
+            return Compare<const char*>(x->title, search);
             });
-        if (book != nullptr) {
-            return book;
-        }
-        return nullptr;
+
+        return book;
     }
     Book* findByISBN(const char* search) {
         Book* book = books.FindFirst([search](Book* x) {

@@ -22,6 +22,12 @@ struct DFAEngine {
             currState = Transition(currState, inputBuffer);
 
         }
+        inputBuffer = stateFuncs[currState]();
+        if (Compare(inputBuffer, "ACC")|| Compare(inputBuffer, "ERR")) {
+            currState = Transition(currState, inputBuffer);
+            return;
+        }
+        EngineStart();
     }
     void AddTransition(const char* currState, const char* input, const char* nextState) {
         bool has = FindTransition(currState);

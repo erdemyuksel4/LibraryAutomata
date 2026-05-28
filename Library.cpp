@@ -1,17 +1,28 @@
 ﻿#include "./Service.h"
 #include "./DFAEngine.h"
 #include <iostream>
-
+static void CopyTestStr(char* dest, const char* src) {
+    if (src == nullptr) return;
+    int i = 0;
+    for (; src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    dest[i] = '\0';
+}
 
 struct LibraryDFALoginContext {
     int id;
     char pass[50];
 };
-
+struct TestLoginContext {
+    int id;
+    const char* pass;
+};
 struct LibraryDFALogin {
     static MemberVerificationService memSer;
     static DFAEngine engine;
     static LibraryDFALoginContext ctx;
+    static TestLoginContext testCtx;
 
     static const char* q0() {
         std::cout << "\n[STATE]: q0 (Login Screen)\n";
@@ -114,6 +125,52 @@ struct LibraryDFALogin {
         return "ERR";
     }
 
+    // === q0 TEST ALTERNATİFİ ===
+    static const char* q0_test() {
+        std::cout << "\n[STATE]: q0 (Login Screen) - [AUTOMATED TEST MODE]\n";
+
+        // Kullanıcı girişi yerine test context'inden ana bağlama veriyi besliyoruz!
+        ctx.id = testCtx.id;
+        std::cout << "Enter User ID: " << ctx.id << " (Injected automatically)\n";
+
+        std::cout << "--> [OUTPUT]: \"id\" triggered. Transitioning to q1.\n";
+        return "id";
+    }
+
+    // === q2 TEST ALTERNATİFİ ===
+    static const char* q2_test() {
+        std::cout << "\n[STATE]: q2 (Password Input - Attempt 1) - [AUTOMATED TEST MODE]\n";
+
+        // Test şifresini ana bağlama kopyalıyoruz
+        CopyTestStr(ctx.pass, testCtx.pass);
+        std::cout << "Password: [HIDDEN] (Injected automatically)\n";
+
+        std::cout << "--> [OUTPUT]: \"pw\" submitted. Verification (q3) will be processed.\n";
+        return "pw";
+    }
+
+    // === q4 TEST ALTERNATİFİ ===
+    static const char* q4_test() {
+        std::cout << "\n[STATE]: q4 (Password Input - Attempt 2) - [AUTOMATED TEST MODE]\n";
+
+        CopyTestStr(ctx.pass, testCtx.pass);
+        std::cout << "Password: [HIDDEN] (Injected automatically)\n";
+
+        std::cout << "--> [OUTPUT]: \"pw\" submitted. Verification (q7) will be processed.\n";
+        return "pw";
+    }
+
+    // === q8 TEST ALTERNATİFİ ===
+    static const char* q8_test() {
+        std::cout << "\n[STATE]: q8 (Password Input - Final Attempt) - [AUTOMATED TEST MODE]\n";
+
+        CopyTestStr(ctx.pass, testCtx.pass);
+        std::cout << "Password: [HIDDEN] (Injected automatically)\n";
+
+        std::cout << "--> [OUTPUT]: \"pw\" submitted. Final verification (q9) will be processed.\n";
+        return "pw";
+    }
+
     static void Init() {
         engine.AddTransition("q0", "id", "q1");
         engine.AddTransition("q1", "user", "q2");
@@ -141,6 +198,12 @@ struct LibraryDFALogin {
         engine.AddFunction("q8", q8);
         engine.AddFunction("q9", q9);
         engine.AddFunction("q10", q10);
+
+
+        engine.AddTestFunction("q0", q0_test);
+        engine.AddTestFunction("q2", q2_test);
+        engine.AddTestFunction("q4", q4_test);
+        engine.AddTestFunction("q8", q8_test);
     }
 
     static void Login() {
@@ -151,16 +214,20 @@ struct LibraryDFABorrowContext {
     const char* search;
     Book* book;
 };
-
+struct TestBorrowContext {
+    Queue<const char*> searchQueue;
+    Queue<const char*> decisionQueue;
+};
 struct LibraryDFABorrow {
     static LibraryDFABorrowContext ctx;
-    static BookService bookSer; // 🚨 Shared service için pointer yapıldı kanka!
+    static BookService bookSer;
     static DFAEngine engine;
+    static TestBorrowContext testCtx;
 
     static const char* q11() {
-        std::cout << "\n============================================\n";
+
         std::cout << "[STATE]: q11 (Book Search Screen)\n";
-        std::cout << "============================================\n";
+
 
         char searchBuffer[100];
         std::cout << "Enter Book Title / ISBN: ";
@@ -175,7 +242,7 @@ struct LibraryDFABorrow {
         std::cout << "\n[STATE]: q12 (Database Search Layer)\n";
         std::cout << "--> Searching for \"" << ctx.search << "\" in library repository...\n";
 
-        // . yerine -> kullanıyoruz
+
         Book* found = bookSer.Search(ctx.search);
         if (found != nullptr) {
             ctx.book = found;
@@ -193,7 +260,7 @@ struct LibraryDFABorrow {
         std::cout << "\n[STATE]: q14 (Availability Check Layer)\n";
         std::cout << "--> Querying loan/reservation status for \"" << ctx.book->title << "\"...\n";
 
-        // . yerine -> kullanıyoruz
+
         bool available = bookSer.isAvailable(ctx.book);
         if (available) {
             std::cout << "--> [STATUS]: Book is on the shelf and available.\n";
@@ -210,7 +277,7 @@ struct LibraryDFABorrow {
         std::cout << "\n[STATE]: q16 (Checkout Action Layer)\n";
         std::cout << "--> Processing Member ID: " << LibraryDFALogin::ctx.id << "\n";
 
-        // . yerine -> kullanıyoruz
+    
         bookSer.Borrow(ctx.book, LibraryDFALogin::ctx.id);
 
         std::cout << "--> [SUCCESS]: Book has been successfully checked out to the member!\n";
@@ -222,7 +289,7 @@ struct LibraryDFABorrow {
         std::cout << "\n[STATE]: q15 (Reservation Action Layer)\n";
         std::cout << "--> Creating a reservation queue for Member ID: " << LibraryDFALogin::ctx.id << "...\n";
 
-        // . yerine -> kullanıyoruz
+        
         bookSer.Reserve(ctx.book, LibraryDFALogin::ctx.id);
 
         std::cout << "--> [SUCCESS]: Reservation record created. You will be notified when the book is returned.\n";
@@ -231,9 +298,9 @@ struct LibraryDFABorrow {
     }
 
     static const char* q17() {
-        std::cout << "\n============================================\n";
+
         std::cout << "[STATE]: q17 (Decision / Session Screen)\n";
-        std::cout << "============================================\n";
+
 
         char con[20];
         std::cout << "Type [Search] to search again, or [Accept] to finish: ";
@@ -249,14 +316,46 @@ struct LibraryDFABorrow {
     }
 
     static const char* q13() {
-        std::cout << "\n============================================\n";
+
         std::cout << "[STATE]: q13 (TRAP / ERROR STATE - TRANSACTION FAILED)\n";
-        std::cout << "============================================\n";
+
         std::cout << "--> [ERROR]: Operation aborted because the requested book was not found.\n";
         std::cout << "--> [OUTPUT]: \"ERR\" triggered. Automaton terminated with errors.\n";
         return "ERR";
     }
+    // === q11 TEST ALTERNATİFİ (Kitap Arama) ===
+    static const char* q11_test() {
 
+        std::cout << "[STATE]: q11 (Book Search Screen) - [TEST MODE]\n";
+
+
+        // Kullanıcı girdisi yerine testCtx içindeki sahte veriyi doğrudan asıl ctx'e yediriyoruz kanka
+        ctx.search = testCtx.searchQueue.Dequeue();
+        std::cout << "Enter Book Title / ISBN: " << ctx.search << " (Auto-Injected)\n";
+
+        std::cout << "--> [OUTPUT]: \"search\" triggered. Moving to Database Search Layer (q12).\n";
+        return "search";
+    }
+
+    // === q17 TEST ALTERNATİFİ (Karar / Oturumu Kapatma - Devam Etme) ===
+    static const char* q17_test() {
+
+        std::cout << "[STATE]: q17 (Decision / Session Screen) - [TEST MODE]\n";
+
+
+        const char* nextChoice = testCtx.decisionQueue.Dequeue();
+        std::cout << "Type [Search] to search again, or [Accept] to finish: " << nextChoice << " (Auto-Injected)\n";
+
+        // testCtx.decision "Accept" ise kabul durumuna (ACC) uçuruyoruz
+        if (Compare<const char*>(nextChoice, "ACC")) {
+            std::cout << "--> [OUTPUT]: \"ACC\" triggered. Automaton terminating SUCCESSFULLY.\n";
+            return "ACC";
+        }
+
+        // Değilse "next" döndürerek otomatı tekrar q11'e (Arama ekranına) loop'a sokuyoruz kanka!
+        std::cout << "--> [OUTPUT]: \"next\" triggered. Returning to Book Search (q11).\n";
+        return "next";
+    }
     static void Init() {
         engine.AddTransition("q11", "search", "q12");
         engine.AddTransition("q12", "found", "q14");
@@ -274,30 +373,35 @@ struct LibraryDFABorrow {
         engine.AddFunction("q15", q15);
         engine.AddFunction("q16", q16);
         engine.AddFunction("q17", q17);
+
+        engine.AddTestFunction("q11", q11_test);
+        engine.AddTestFunction("q17", q17_test);
+
     }
 
     static void Borrow() {
         engine.EngineStart();
     }
 };
-// ============================================================================
-// 3. RENEWAL AUTOMATON
-// ============================================================================
+
 struct LibraryDFARenewContext {
     const char* search;
     Book* book;
     int late;
 };
-
+struct RenewTestContext {
+    Queue<const char*> searchQueue;
+    Queue<const char*> decisionQueue;
+};
 struct LibraryDFARenewal {
     static BookService bookSer;
     static DFAEngine engine;
     static LibraryDFARenewContext ctx;
-
+    static RenewTestContext testCtx;
     static const char* q18() {
-        std::cout << "\n============================================\n";
+;
         std::cout << "[STATE]: q18 (Renewal - Book Selection Screen)\n";
-        std::cout << "============================================\n";
+
 
         char searchBuffer[100];
         std::cout << "Enter Book Title / ISBN to Renew: ";
@@ -331,7 +435,7 @@ struct LibraryDFARenewal {
         std::cout << "--> Is \"" << ctx.book->title << "\" physically intact or reported lost?\n";
 
         char con[20];
-        std::cout << "Select Status [Due] (Return/Renew) or [Lost] (Report Lost): ";
+        std::cout << "Select Status [Due] (Renew) or [Lost] (Report Lost): ";
         std::cin >> con;
 
         if (Compare<const char*>(con, "Lost")) {
@@ -398,9 +502,9 @@ struct LibraryDFARenewal {
     }
 
     static const char* q23() {
-        std::cout << "\n============================================\n";
+
         std::cout << "[STATE]: q23 (End of Process / Confirmation Screen)\n";
-        std::cout << "============================================\n";
+
 
         char con[20];
         std::cout << "Type [Next] for another action, or [Accept] to quit: ";
@@ -417,14 +521,64 @@ struct LibraryDFARenewal {
 
     // 🚨 YENI EKLENEN TRAP STATE (HATA ÇIKIŞI)
     static const char* q26() {
-        std::cout << "\n============================================\n";
+
         std::cout << "[STATE]: q26 (TRAP / ERROR STATE - RENEWAL FAILED)\n";
-        std::cout << "============================================\n";
+
         std::cout << "--> [ERROR]: Operation aborted because the requested book does not exist.\n";
         std::cout << "--> [OUTPUT]: \"ERR\" triggered. Automaton terminated with errors.\n";
         return "ERR";
     }
+    static const char* q18_test() {
+     
+        std::cout << "[STATE]: q18 (Renewal - Book Selection Screen) - [QUEUE MODE]\n";
+        
 
+        // Kuyruktan sıradaki kitap adını çekip ana context'e yazıyoruz
+        ctx.search = testCtx.searchQueue.Dequeue();
+        std::cout << "Enter Book Title / ISBN to Renew: " << ctx.search << " (Auto-Fetched from Queue)\n";
+
+        std::cout << "--> [OUTPUT]: \"select\" triggered. Moving to Database Search Query (q19).\n";
+        return "select";
+    }
+
+    // === q20 TEST ALTERNATİFİ (Kuyruktan Durum Değerlendirmesi) ===
+    static const char* q20_test() {
+        std::cout << "\n[STATE]: q20 (Condition Assessment Layer) - [QUEUE MODE]\n";
+        std::cout << "--> Is \"" << ctx.book->title << "\" physically intact or reported lost?\n";
+
+        // Kuyruktan sıradaki durum komutunu ("Due" veya "Lost") çekiyoruz kanka
+        const char* statusChoice = testCtx.decisionQueue.Dequeue();
+        std::cout << "Select Status [Due] (Return/Renew) or [Lost] (Report Lost): " << statusChoice << " (Auto-Fetched from Queue)\n";
+
+        if (Compare<const char*>(statusChoice, "Lost")) {
+            std::cout << "--> [STATUS]: Book marked as lost.\n";
+            std::cout << "--> [OUTPUT]: \"lost\" triggered. Proceeding to Replacement Billing (q25).\n";
+            return "lost";
+        }
+
+        std::cout << "--> [STATUS]: Book is intact. Proceeding to overdue check.\n";
+        std::cout << "--> [OUTPUT]: \"due\" triggered. Advancing to Overdue Assessment (q21).\n";
+        return "due";
+    }
+
+    // === q23 TEST ALTERNATİFİ (Kuyruktan Onay / İşlem Sonu Ekranı) ===
+    static const char* q23_test() {
+
+        std::cout << "[STATE]: q23 (End of Process / Confirmation Screen) - [QUEUE MODE]\n";
+
+
+        // Kuyruktan sıradaki karar komutunu ("Accept" veya "Next") çekiyoruz kanka
+        const char* nextChoice = testCtx.decisionQueue.Dequeue();
+        std::cout << "Type [Next] for another action, or [Accept] to quit: " << nextChoice << " (Auto-Fetched from Queue)\n";
+
+        if (Compare<const char*>(nextChoice, "ACC")) {
+            std::cout << "--> [OUTPUT]: \"ACC\" triggered. Renewal automaton completed SUCCESSFULLY.\n";
+            return "ACC";
+        }
+
+        std::cout << "--> [OUTPUT]: \"next\" triggered. Returning to Book Selection (q18).\n";
+        return "next";
+    }
     static void Init() {
         engine.AddTransition("q18", "select", "q19");
 
@@ -452,7 +606,11 @@ struct LibraryDFARenewal {
         engine.AddFunction("q23", q23);
         engine.AddFunction("q24", q24);
         engine.AddFunction("q25", q25);
-        engine.AddFunction("q26", q26); // 🚨 Yeni fonksiyon motora bağlandı
+        engine.AddFunction("q26", q26); 
+
+        engine.AddTestFunction("q18", q18_test);
+        engine.AddTestFunction("q20", q20_test);
+        engine.AddTestFunction("q23", q23_test);
     }
 
     static void Renew() {
